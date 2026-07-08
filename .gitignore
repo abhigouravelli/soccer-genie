@@ -1,0 +1,33 @@
+# ── Secrets / environment ───────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ── Python (backend) ────────────────────────────────────────────────────────
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# ── RAG index cache (rebuilt automatically from docs/) ──────────────────────
+.rag_index.pkl
+
+# ── Node (frontend) ─────────────────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+npm-debug.log*
+yarn-error.log*
+
+# ── Database backups / dumps ────────────────────────────────────────────────
+backups/
+*.sql.gz
+
+# ── Editor / OS cruft ───────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

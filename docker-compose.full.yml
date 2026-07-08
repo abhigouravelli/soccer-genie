@@ -1,0 +1,71 @@
+# Full-stack, one-command setup: database + backend + frontend.
+#
+#   docker compose -f docker-compose.full.yml up --build
+#   → open http://localhost:8080
+#
+# Only Docker is required on the host — no local Python or Node needed.
+# For AI chat / Rules Q&A, run Ollama on the host (the backend reaches it via
+# host.docker.internal); the app degrades gracefully without it.
+# Set FOOTBALLDATA_API_KEY in your shell (or a root .env) to enable live scores.
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: soccer2026_db
+    environment:
+      POSTGRES_DB: soccer2026
+      POSTGRES_USER: soccer_admin
+      POSTGRES_PASSWORD: soccer2026
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: "--auth-host=md5 --auth-local=md5"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soccer_admin -d soccer2026"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  server:
+    build: ./app/server
+    container_name: soccer2026_server
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Reach Postgres over the compose network (container port, not host 5433).
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: soccer_admin
+      PGPASSWORD: soccer2026
+      PGDATABASE: soccer2026
+      # Ollama runs on the host, not in a container.
+      OLLAMA_URL: http://host.docker.internal:11434
+      # Regulations PDFs are mounted read-only below.
+      RAG_DOCS_DIR: /docs
+      # Optional: pass through from the shell/root .env; empty = offline data.
+      FOOTBALLDATA_API_KEY: ${FOOTBALLDATA_API_KEY:-}
+    extra_hosts:
+      # Lets host.docker.internal resolve on Linux too (automatic on Docker Desktop).
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docs:/docs:ro
+    ports:
+      - "4000:4000"   # optional: exposes the API directly for debugging
+    restart: unless-stopped
+
+  client:
+    build: ./app/client
+    container_name: soccer2026_client
+    depends_on:
+      - server
+    ports:
+      # Host 5173 (EDB Postgres' bundled Apache already holds 8080).
+      - "5173:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

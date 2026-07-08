@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: soccer2026_db
+    environment:
+      POSTGRES_DB: soccer2026
+      POSTGRES_USER: soccer_admin
+      POSTGRES_PASSWORD: soccer2026
+      POSTGRES_HOST_AUTH_METHOD: md5
+      POSTGRES_INITDB_ARGS: "--auth-host=md5 --auth-local=md5"
+    ports:
+      # Host 5433 → container 5432. A native Postgres already holds host 5432,
+      # so the app connects on 5433 to reach this container's database.
+      - "5433:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U soccer_admin -d soccer2026"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: soccer2026_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@soccer2026.com
+      PGADMIN_DEFAULT_PASSWORD: Soccer2026!
+    ports:
+      - "5050:80"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
